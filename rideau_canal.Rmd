@@ -1,0 +1,85 @@
+---
+title: "Rideau Canal"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+#dates <- data.frame(readClipboard(1),stringsAsFactors = F)
+#dates_clipboard <- dates
+load(file = "/Users/Sasha/Documents/Projects/rideau_canal/rideau_canal_opening_dates")
+dates <- dates_clipboard
+
+# add this year (Jan 18th)
+dates <- rbind("January 18, 2020", dates)
+
+#save(dates_clipboard, file = "rideau_canal_opening_dates")
+
+colnames(dates) <- c("date")
+dates$date_fmt <- as.Date(dates$date, format = "%B %d, %Y")
+
+dates$month <- as.numeric(format(dates$date_fmt, "%m"))
+dates$day <- as.numeric(format(dates$date_fmt, "%d"))
+```
+
+```{r}
+# get average date
+min_date <- min(dates[dates$month==12,]$day)
+max_date <- max(dates[dates$month==2,]$day)
+
+print(c("Dec", min_date))
+print(c("Feb", max_date))
+
+```
+
+```{r}
+# start the axis from Dec 1?
+# january + 30 gives days from dec 1
+# february + 31 + 30 gives days from dec 1
+# dec just use days - 1
+dates$from_dec1 <- with(dates,
+                        ifelse(month==1, day + 30,
+                               ifelse(month==2, day + 31 + 30,
+                               day - 1)))
+
+# add season (1970-1971 is the 1970 season)
+dates$season <- 2019:(2019-nrow(dates) + 1)
+```
+
+```{r}
+# regression model
+reg_model <- lm(season ~ from_dec1, data = dates)
+summary(reg_model)
+plot(reg_model)
+```
+
+```{r}
+# on average, each year the skating season has opened 0.72 days later
+# (give or take 0.34 either way)
+
+# how many times did it open in Jan?
+# how often has that happened recently?
+
+nrow(dates[dates$month==1,])
+nrow(dates[dates$month==12 & dates$season>=2000,]) # seasons since 2000-2001 starting in Jan
+nrow(dates[dates$season>=2000,])
+nrow(dates[dates$month==12 & 1980 <= dates$season & dates$season < 2000,]) # seasons before 2000-2001 starting in Jan
+
+
+```
+
+```{r}
+ggplot(dates) +
+  geom_point(aes(x=season, y=from_dec1)) +
+  geom_hline(yintercept=31, linetype = "dotted") +
+  geom_smooth(aes(x=season, y=from_dec1),
+              method = "lm", formula = y ~ x, se = F, colour="red", linetype="dashed") +
+  annotate("text", 1968, 32.4, label="Jan 1", size=3) +
+  ylab("Days after Dec 1") + xlab("Season") +
+  ggtitle("How late in the season does the Rideau Canal Skateway open?")
+
+#ggsave('test.png', type="cairo", device="png")
+```
