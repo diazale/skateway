@@ -4,38 +4,43 @@ output: html_document
 ---
 
 ```{r}
+library(lubridate)
 library(tidyverse)
 ```
 
-```{r}
-#dates <- data.frame(readClipboard(1),stringsAsFactors = F)
-#dates_clipboard <- dates
-load(file = "/Users/Sasha/Documents/Projects/rideau_canal/rideau_canal_opening_dates")
-dates <- dates_clipboard
+Import the dates on which the Rideau Canal Skateway was opened. This input file was originally copied from [Wikipedia](https://en.wikipedia.org/w/index.php?title=Rideau_Canal&oldid=995637706#Skateway "Wikipedia article: Rideau Canal, section Skateway, revision 995637706").
 
-# add this year (Jan 18th)
-dates <- rbind("January 18, 2020", dates)
+```{r Import dates}
+# Import data
+dates <- read.csv("rideau_canal_dates.csv", stringsAsFactors = F, header = T, row.names = 1)
 
-#save(dates_clipboard, file = "rideau_canal_opening_dates")
-
-colnames(dates) <- c("date")
 dates$date_fmt <- as.Date(dates$date, format = "%B %d, %Y")
 
 dates$month <- as.numeric(format(dates$date_fmt, "%m"))
 dates$day <- as.numeric(format(dates$date_fmt, "%d"))
 ```
 
-```{r}
-# get average date
-min_date <- min(dates[dates$month==12,]$day)
-max_date <- max(dates[dates$month==2,]$day)
+Find the earliest and latest opening dates.
+```{r Find the earliest and latest opening dates}
 
-print(c("Dec", min_date))
-print(c("Feb", max_date))
+# Get minimum and maximum dates
+# It's sorta tricky since a season spans two years (e.g. Dec 2011 J- an 2012)
+# For the minimum day look at the earliest year-day before June; for max after June
+min_day <- min(yday(dates[month(dates$date_fmt) > 6,]$date_fmt))
+min_day <- subset(dates, yday(date_fmt)==min_day)[1,] # In a tie just take the first one
+
+max_day <- max(yday(dates[month(dates$date_fmt) < 6,]$date_fmt))
+max_day <- subset(dates, yday(date_fmt)==max_day)[1,] # In a tie just take the first one
+
+cat("Earliest and latest opening days:\n")
+cat(min_day$date)
+cat("\n")
+cat(max_day$date)
 
 ```
 
-```{r}
+Add some other useful variables. Add a season variable and a variable counting the days from December 1. Season is defined as the first year (i.e. the 1970-71 season is "1971").
+```{r Add season}
 # start the axis from Dec 1?
 # january + 30 gives days from dec 1
 # february + 31 + 30 gives days from dec 1
@@ -49,7 +54,8 @@ dates$from_dec1 <- with(dates,
 dates$season <- 2019:(2019-nrow(dates) + 1)
 ```
 
-```{r}
+Run a linear regression of days after December 1 versus opening day across the entire data set. Obviously this is only an approximation (since eventually it will be possible to not have an opening day).
+```{r Regression model and diagnostics}
 # regression model
 reg_model <- lm(season ~ from_dec1, data = dates)
 summary(reg_model)
@@ -71,7 +77,7 @@ nrow(dates[dates$month==12 & 1980 <= dates$season & dates$season < 2000,]) # sea
 
 ```
 
-```{r}
+```{r Plot the dates}
 ggplot(dates) +
   geom_point(aes(x=season, y=from_dec1)) +
   geom_hline(yintercept=31, linetype = "dotted") +
@@ -81,5 +87,10 @@ ggplot(dates) +
   ylab("Days after Dec 1") + xlab("Season") +
   ggtitle("How late in the season does the Rideau Canal Skateway open?")
 
-#ggsave('test.png', type="cairo", device="png")
+ggplot(dates) +
+  geom_point(aes(x=season, y=from_dec1)) +
+  geom_hline(yintercept=31, linetype = "dotted") +
+  annotate("text", 1968, 32.4, label="Jan 1", size=3) +
+  ylab("Days after Dec 1") + xlab("Season") +
+  ggtitle("How late in the season does the Rideau Canal Skateway open?")
 ```
