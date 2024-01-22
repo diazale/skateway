@@ -182,9 +182,8 @@ p <- ggplot() +
                 #width = 1, colour = alpha("red", 0.3), fill = "red", alpha=0.3, fatten = NULL) +
                 width = w, colour = NA, fill = "red", alpha=0.3, fatten = NULL) +
   xlab("Season") +
-  ylab("Season start and finish") +
+  ylab("Season length (starting December 1)") +
   coord_cartesian(ylim = c(0,120))
-
 
 #+
 #  coord_flip() +
