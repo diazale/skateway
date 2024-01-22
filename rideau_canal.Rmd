@@ -14,10 +14,10 @@ Import the dates on which the Rideau Canal Skateway was opened. This input file 
 # Import data
 dates <- read.csv("rideau_canal_dates.csv", stringsAsFactors = F, header = T)#, row.names = 1)
 
-dates$date_fmt <- as.Date(dates$date, format = "%B %d, %Y")
+dates$opening_date_fmt <- as.Date(dates$opening_date, format = "%B %d, %Y")
 
-dates$month <- as.numeric(format(dates$date_fmt, "%m"))
-dates$day <- as.numeric(format(dates$date_fmt, "%d"))
+dates$month <- as.numeric(format(dates$opening_date_fmt, "%m"))
+dates$day <- as.numeric(format(dates$opening_date_fmt, "%d"))
 ```
 
 Find the earliest and latest opening dates.
@@ -26,16 +26,16 @@ Find the earliest and latest opening dates.
 # Get minimum and maximum dates
 # It's sorta tricky since a season spans two years (e.g. Dec 2011 J- an 2012)
 # For the minimum day look at the earliest year-day before June; for max after June
-min_day <- min(yday(dates[month(dates$date_fmt) > 6,]$date_fmt))
-min_day <- subset(dates, yday(date_fmt)==min_day)[1,] # In a tie just take the first one
+min_day <- min(yday(dates[month(dates$opening_date_fmt) > 6,]$opening_date_fmt))
+min_day <- subset(dates, yday(opening_date_fmt)==min_day)[1,] # In a tie just take the first one
 
-max_day <- max(yday(dates[month(dates$date_fmt) < 6,]$date_fmt))
-max_day <- subset(dates, yday(date_fmt)==max_day)[1,] # In a tie just take the first one
+max_day <- max(yday(dates[month(dates$opening_date_fmt) < 6,]$opening_date_fmt))
+max_day <- subset(dates, yday(opening_date_fmt)==max_day)[1,] # In a tie just take the first one
 
 cat("Earliest and latest opening days:\n")
-cat(min_day$date)
+cat(min_day$opening_date)
 cat("\n")
-cat(max_day$date)
+cat(max_day$opening_date)
 
 ```
 
@@ -118,3 +118,78 @@ ggplot(dates) +
   ggtitle("How late in the season does the Rideau Canal Skateway open?") +
   geom_point(aes(x=2022,y=64),colour="red") # assume Feb 3 opening
 ```
+
+```{r Trying to make floating bar plots}
+# Floating bar plots:
+# A bunch of vertical bars where the bottom starts at the opening date and the top goes to the closing date
+dates_floating <- read.csv("rideau_canal_dates.csv", stringsAsFactors = F, header = T)#, row.names = 1)
+
+# Format the data
+dates_floating$opening_date_formatted <- as.Date(dates_floating$opening_date, format = "%B %d, %Y")
+dates_floating$closing_date_formatted <- as.Date(dates_floating$closing_date_fmt, format = "%Y-%m-%d")
+
+# Drop some variables so we define them solely by date
+# Also rename them, this dataset became a bit of a hodge podge over the years....
+dates_floating <- dates_floating[,c("opening_date_formatted","closing_date_formatted")]
+
+# Add the individual day and month
+dates_floating$opening_date_month <- month(dates_floating$opening_date_formatted)
+dates_floating$opening_date_day <- day(dates_floating$opening_date_formatted)
+dates_floating$closing_date_month <- month(dates_floating$closing_date_formatted)
+dates_floating$closing_date_day <- day(dates_floating$closing_date_formatted)
+
+# Set the dates relative to December 1st of each season
+dates_floating$opening_from_dec1 <- with(dates_floating,
+                                         ifelse(opening_date_month==1, opening_date_day + 30,
+                                                ifelse(opening_date_month==2, opening_date_day + 31 + 30,
+                                                       opening_date_day - 1)))
+
+# Get the date between the opening and closing
+dates_floating$closing_from_dec1 <- with(dates_floating,
+                                         as.integer(opening_from_dec1 + (closing_date_formatted - opening_date_formatted)))
+
+# Middle of season marker
+dates_floating$mid <- with(dates_floating, as.integer(opening_from_dec1 + (closing_from_dec1 - opening_from_dec1)/2))
+
+# add season (1970-1971 is the 1970 season)
+dates_floating$season <- rev(1970:(nrow(dates) - 1 + 1970))
+
+# Add the 2022-23 season (empty)
+dates_floating_missing <- dates_floating[0,c("opening_date_formatted","closing_date_formatted")]
+dates_floating_missing[1,] <- list(as.Date("2022-12-01", format = "%Y-%m-%d"),
+                                as.Date("2023-03-31", format = "%Y-%m-%d"))
+dates_floating_missing$opening_from_dec1 <- 1
+dates_floating_missing$closing_from_dec1 <- 120
+dates_floating_missing$mid <- 60
+dates_floating_missing$season <- 2022
+
+# bar width
+w <- 0.97
+
+p <- ggplot() +
+  geom_crossbar(data = dates_floating,
+                aes(x = season, y = mid, ymin = opening_from_dec1, ymax = closing_from_dec1),
+                width = w, colour = "grey", fill = "grey", fatten = NULL) +
+  geom_crossbar(data = dates_floating_missing,
+                aes(x = season, y = mid, ymin = opening_from_dec1, ymax = closing_from_dec1),
+                #width = 1, colour = alpha("red", 0.3), fill = "red", alpha=0.3, fatten = NULL) +
+                width = w, colour = NA, fill = "red", alpha=0.3, fatten = NULL) +
+  xlab("Season") +
+  ylab("Season start and finish") +
+  coord_cartesian(ylim = c(0,120))
+
+
+#+
+#  coord_flip() +
+#  xlab("Item") + 
+#  ylab("Value")
+
+#dates_floating$month <- as.numeric(format(dates_floating$date_fmt, "%m"))
+#dates_floating$day <- as.numeric(format(dates_floating$date_fmt, "%d"))
+```
+
+
+
+
+
+
