@@ -51,7 +51,12 @@ dates$from_dec1 <- with(dates,
                                day - 1)))
 
 # add season (1970-1971 is the 1970 season)
-dates$season <- rev(1970:(nrow(dates) - 1 + 1970))
+# if the season opens in December, use that year
+# Otherwise use the opening date's year minus one
+dates$season <- with(dates, ifelse(
+  month(opening_date_fmt)==12, year(opening_date_fmt), year(opening_date_fmt)  -1
+))
+#dates$season <- rev(1970:(nrow(dates) - 1 + 1970))
 ```
 
 Run a linear regression of days after December 1 versus opening day across the entire data set. Obviously this is only an approximation (since eventually it will be possible to not have an opening day).
@@ -115,8 +120,8 @@ ggplot(dates) +
   annotate("text", 1968, 32.4, label="Jan 1", size=3) +
   annotate("text", 1968, 63.4, label="Feb 1", size=3) +
   ylab("Days after Dec 1") + xlab("Season") +
-  ggtitle("How late in the season does the Rideau Canal Skateway open?") +
-  geom_point(aes(x=2022,y=64),colour="red") # assume Feb 3 opening
+  ggtitle("How late in the season does the Rideau Canal Skateway open?") #+
+  #geom_point(aes(x=2022,y=64),colour="red") # assume Feb 3 opening
 ```
 
 ```{r Trying to make floating bar plots}
@@ -152,7 +157,9 @@ dates_floating$closing_from_dec1 <- with(dates_floating,
 dates_floating$mid <- with(dates_floating, as.integer(opening_from_dec1 + (closing_from_dec1 - opening_from_dec1)/2))
 
 # add season (1970-1971 is the 1970 season)
-dates_floating$season <- rev(1970:(nrow(dates) - 1 + 1970))
+dates_floating$season <- with(dates_floating, ifelse(
+  month(opening_date_formatted)==12, year(opening_date_formatted), year(opening_date_formatted)  -1
+))
 
 # Add the 2022-23 season (empty)
 dates_floating_missing <- dates_floating[0,c("opening_date_formatted","closing_date_formatted")]
@@ -164,12 +171,12 @@ dates_floating_missing$mid <- 60
 dates_floating_missing$season <- 2022
 
 # bar width
-w <- 0.97
+w <- 0.9
 
 p <- ggplot() +
   geom_crossbar(data = dates_floating,
                 aes(x = season, y = mid, ymin = opening_from_dec1, ymax = closing_from_dec1),
-                width = w, colour = "grey", fill = "grey", fatten = NULL) +
+                width = w, colour = "blue", fill = "blue", fatten = NULL) +
   geom_crossbar(data = dates_floating_missing,
                 aes(x = season, y = mid, ymin = opening_from_dec1, ymax = closing_from_dec1),
                 #width = 1, colour = alpha("red", 0.3), fill = "red", alpha=0.3, fatten = NULL) +
